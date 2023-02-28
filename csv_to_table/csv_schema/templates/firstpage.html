@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<script>
+    $(function() {
+        $('#submitbtn').bind('click', function() {
+            var csv = $('#chosenCSV').children("option:selected");
+            if(csv.val() === '') {
+                alert("Please select a CSV file")
+                return false
+            }
+            var table = $('#chosenTable').children("option:selected");
+            if(table.val() === ''){
+                alert('Please select a table')
+                return false
+            }
+
+            alert('You selected both csv and table')
+            $.ajax({
+                type: "POST",
+                url: "/process",
+                data: JSON.stringify({"csv": csv.val(), "table":table.val()}),
+                contentType: "application/json"
+            }).done(
+                function(data)
+                {          
+                    console.log(data);                     
+                    window.location.href = '/render_page2/'+csv.val()+'/'+table.val()
+                });
+                       
+        });
+
+        
+    });
+
+    function addSchema() {
+            window.location.href = '/render_add_schema';
+        }
+    function addCsv() {
+            window.location.href = '/redirect_upload_csv';
+    }
+</script>
+{% endblock %}
+
+{% block body %}
+<div class = "flex-container">
+    <div class="flex-child">
+        <h3>List of CSV files</h3>
+        {% for file in files %}
+            <a href="/csvschema/{{file}}">{{file}}</a>
+            <br>
+        {% endfor %}
+    </div>
+    <div class="flex-child">
+        <h3>List of tables</h3>
+        {% for table in tables %}
+            <a href="/tableschema/{{table}}">{{table}}</a>
+            <br>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="flex-container">
+    <!-- Drop down menu for selecting csv on left side
+         '' for selecting table on rhs-->
+    <div class="flex-child">
+         
+            <label>Select CSV</label>
+            <select id="chosenCSV" name="csv">
+                <option value="">Select an option</option>
+                {% for file in files %}
+                    <option value="{{file}}">{{file}}</option>
+                {% endfor %}
+            </select>
+         
+    </div>
+    <div class="flex-child">
+        
+            <label>Select Table</label>
+            <select id="chosenTable" name="table">
+                <option value="">Select an option</option>
+                {% for table in tables %}
+                    <option value="{{table}}">{{table}}</option>
+                {% endfor %}
+            </select>
+        
+    </div>
+</div>
+<div class="wrapper">
+    <input id="submitbtn" name="submitbtn" type="submit" onsubmit="" value="Proceed" /><br>
+    <input id="addschema" name="addschema" type="submit" onclick="addSchema();" value="Add table schema"/>
+    <input id="addcsv" name="addcsv" type="submit" onclick="addCsv();" value="Add CSV"/>
+</div>
+
+<div class="mappings">
+    {% for mapping in mappings %}
+        <a href="/mapping/{{mapping}}">{{mapping}}</a>
+        <br>
+    {% endfor %}
+</div>
+{% endblock %}
+

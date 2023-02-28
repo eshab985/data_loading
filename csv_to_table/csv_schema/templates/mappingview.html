@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+{% block head %}
+    <script>
+        var filename = '{{file}}'
+        function apply_mapping(){
+            console.log('Mapping to be applied')
+            fetch('/merge_csv_to_table',{
+                headers:{
+                    'Content-Type':'application/json'
+                },
+                method:'POST',
+                body: JSON.stringify({
+                        'mapping_file' : filename
+                    })
+                
+            }).then(function (response) {
+                if(response.ok){
+                    response.json()
+                    .then(function(response) {
+                        console.log(response)
+                        alert('Mapping applied')
+                        window.location.href = '/'
+                    });
+                }
+                else {
+                    console.log(response.statusText)
+                    throw Error('Something went wrong');
+                }
+            })
+        }
+
+    </script>
+{% endblock %}
+{% block body %}
+    <div class="show">
+        <p>Source CSV name : {{source}}</p>
+        <p>Target table name : {{target}}</p>
+        <p style="font-weight: bold; margin-left:4%; margin-top: 3%;">Column mapping</p>
+        <table>
+            <tr>
+                <th>Target column</th>
+                <th></th>
+                <th>Source column</th>
+            </tr>
+            {% for table_col in mapping %}
+            <tr>
+                <td>{{table_col}}</td>
+                <td></td>
+                <td>{{mapping[table_col]}}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        <input id="submitbtn" name="submitbtn" type="submit" onclick="apply_mapping()" value="Apply mapping" />
+    </div>
+{% endblock %}

@@ -1,0 +1,1 @@
+{"csv": "courses.csv", "table": "course", "mappings": {"c_id": "course_id", "course_name": "course_name"}, "primary-key": "c_id"}

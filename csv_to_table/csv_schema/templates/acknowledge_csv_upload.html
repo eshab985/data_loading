@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block head %}
+<script>
+     $(window).bind("load",function() {
+        window.location.href = '/'
+    });
+</script>
+{% endblock %}
+{% block body %}
+    <p>File uploaded successfully</p>
+{% endblock %}

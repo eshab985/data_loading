@@ -1,0 +1,66 @@
+.title {
+    position:absolute;
+    top: 20%;
+    left: 45%;
+    translate: (-50%,-50%)
+    
+}
+
+.title p {
+    font-weight: bold;
+    font-size: large;
+}
+.secondpagestyle {
+    position:absolute;
+    top: 30%;
+    left: 30%;
+}
+
+.flex-container {
+    display: flex;
+
+}
+
+.flex-child {
+    flex: 2;
+}
+
+.flex-child:first-child {
+    margin-right: 50px;
+}
+
+.wrapper{
+    text-align: center;
+    margin-top: 5%;
+}
+.button {
+    position:absolute;
+    top:50%;
+}
+
+.mappings {
+    text-align: center;
+    margin-top: 2%;
+}
+
+.show {
+    align-items: center;
+    margin-left: 40%;
+    margin-top: 15%;
+}
+
+.show input {
+    margin-top: 5%;
+}
+
+.udfbtn {
+    margin-top : 5%;
+    margin-bottom : 40%;
+}
+
+.mapbtn {
+    align-items: center;
+    position:absolute;
+    left: 40%;
+    translate: (-50%,-50%)
+}

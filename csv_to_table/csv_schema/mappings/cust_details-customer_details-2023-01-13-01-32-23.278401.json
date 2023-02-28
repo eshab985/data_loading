@@ -1,0 +1,4 @@
+{"csv": "customer_details.csv", 
+"table": "cust_details", 
+"mappings": {"id": "cust_id", "first_name": "fname", "last_name": "lname", "city": "place"}, 
+"primary-key": "id"}

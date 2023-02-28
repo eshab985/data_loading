@@ -1,0 +1,64 @@
+{% block head %}
+<style>
+    table, th, td{
+        border: 1px solid;
+        border-collapse: collapse;
+    }
+</style>
+<script>
+    var table = '{{table}}'
+    function delete_schema() {
+        fetch('/delschema/'+table)
+        .then(function(response){
+            if(response.ok){
+                response.json()
+                .then(function(){
+                    alert(response)
+                })
+            }
+            else{
+                console.log('Something went wrong')
+            }
+        })
+        
+    }
+</script>
+
+{% endblock %}
+
+{% block body %}
+<div>
+<h3>Schema for {{table}} table</h3>
+<table>
+    <tr>
+        <th>Column Name</th>
+        <th>Data Type</th>
+    </tr>
+    {% for col, dtype in table_columns_datatypes %}
+        <tr>
+            <td>{{col}}</td>
+            <td>{{dtype}}</td>
+        </tr>
+    {% endfor %}  
+</table>
+<h3>Data</h3>
+<table>
+    <tr>
+        {% for col, dtype in table_columns_datatypes %}
+        <th>{{col}}</th>
+        {% endfor %}
+    </tr>
+    
+    {% for row in data %}
+    <tr>
+        {% for key,val in row.items() %}
+        <td>{{val}}</td>
+        {% endfor %}
+    </tr>   
+    {% endfor %}
+    
+</table>
+<input type="button" id="deleteSchema" name="deleteSchema" value="Delete Schema" onclick="delete_schema();">
+</div>
+
+{% endblock %}

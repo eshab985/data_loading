@@ -1,0 +1,606 @@
+{% extends 'base.html' %}
+
+{% block head %}
+
+{% endblock %}
+{% block body %}
+
+<div id="schema">
+    <label for="tablename">Name:</label>
+    <input type="text" id="tablename" name="tablename"><br>
+    <input type="button" id="addcolumn" name="addcolumn" onclick="activateForm();" value="Add column"><br>
+    <div id="colFormDiv"></div>
+  
+    <table id="columnsTable" style="display:none">
+        <tr>
+            <th>Columns added</th>
+        </tr>
+        <tr>
+            <th>NAME</th>
+            <th>DATAYPE</th>
+            <th>NOT NULL</th>
+            <th>PRIMARY KEY</th>
+            <th>UNIQUE</th>
+            <th>CHECK CONSTRAINT</th>
+            <th>FOREIGN KEY</th>
+        </tr>
+    </table>
+
+    <input style="margin-top: 20%;" id="create" type="submit" value="Create schema" onclick="apply();">
+    <!--
+        <form id="coldtls" style="display:none" onsubmit="applySchema();">
+        <label for="name">Name :</label>
+        <input type="text" id="name" name="name"><br>
+
+        <label for="datatype">Datatype :</label>
+        <select id="datatype" name="typeselect" onclick="populateTypes();">
+            <option value="">Choose datatype</option>
+        </select><br>
+        <input type="checkbox" id="isnull" name="isnull" value="null">
+        <label for="isnull"> IS NULL</label><br>
+
+        <input type="checkbox" id="ispk" name="ispk" value="pk">
+        <label for="ispk"> IS PRIMARY KEY</label>
+
+        <input type="submit" value="Save" onclick="applyChanges();">
+    </form>
+
+    -->
+</div>
+
+<script>
+
+    var options = ['Choose datatype','INTEGER','BIGINT','DECIMAL','SERIAL','BIGSERIAL','VARCHAR(n)','TEXT','DATE','TIME','DATETIME']
+    var cols = [];
+    var checkConstraints = {};
+    
+    var foreignKeys = {};
+    var tables = [];
+    var createCmd = "CREATE TABLE ";
+    
+    function addCheckConstraint(parentDiv, childDiv){
+        var inputConstraint = document.createElement('input');
+        inputConstraint.type = "text";
+        inputConstraint.setAttribute("id", "checkInput"+cols.length);
+        var saveConstraint = document.createElement('input');
+        saveConstraint.type = "button";
+        saveConstraint.value = "Save Constraint";
+        
+    
+        saveConstraint.onclick = function () {
+            inputConstraint.style = "display:none";
+            saveConstraint.style = "display:none";
+            checkConstraints.push(inputConstraint.value);
+            inputConstraint.value="";
+        };
+    
+        childDiv.appendChild(inputConstraint);
+        childDiv.appendChild(saveConstraint);
+    
+        parentDiv.append(childDiv);
+    }
+    async function addReferentialConstraint(fkInputDiv, colName) {
+        //addReferentialConstraint(foreignKeyDiv, fkInputDiv)
+        //var colName = document.getElementById("colName"+cols.length);
+        console.log('Column name = ',colName);
+    
+        if(tables.length == 0) {
+                fetchedTables = await fetch('/gettables')
+                .then((response) => response.json());
+                
+                console.log(fetchedTables);
+              
+                var referencedTableSelect = document.getElementById("referencedtable"+cols.length);
+                fetchedTables['data'].forEach(table => {
+                    tables.push(table);
+                    console.log('Pushed ',table,' to tables');
+                    var optElement = document.createElement("option");
+                    optElement.text = table;
+                    optElement.value = table;
+                    referencedTableSelect.options.add(optElement);
+                }); 
+        }
+        if(foreignKeys.hasOwnProperty(colName) == false) {
+            fkInputDiv.style = "display:block";
+        }
+        else{
+            alert('Violation!!! A foreign key column can reference only one column');
+        }
+        
+    
+    }
+    
+    function fillColumnOptions(tableName, referencedColumnSelect) {
+        console.log('Table selected = ',tableName)
+        //var table = tableName;
+        fetch('/get_table_unique_cols/'+tableName)
+        .then(function(response) {
+            if(response.ok) {
+                response.json()
+                .then(function(response){
+                    cols = response['columns']; dtypes = response['datatypes'];
+    
+                    console.log('Columns = ',cols);
+                    var dummyOption = document.createElement('option')
+                    dummyOption.text = "Choose referenced column";
+                    dummyOption.value = "";
+                    referencedColumnSelect.options.add(dummyOption)
+    
+                    for(var i=0;i<cols.length;i++){
+                        var optElement = document.createElement('option');
+                        optElement.text = cols[i]+"-"+dtypes[i];
+                        console.log(optElement.text);
+                        optElement.value = cols[i];
+                        referencedColumnSelect.options.add(optElement)
+                    }
+                })
+            }
+            else{
+                console.log(response.statusText); console.log('Something went wrong in fetching columns');
+            }
+        })
+    }
+    
+    function activateForm(){
+        console.log('Length of columns array of json = ',cols.length);
+        var colDivEl = document.getElementById("colFormDiv");
+    
+        // create form element and add to DOM
+        var form = document.createElement("form");
+        form.id = "coldtls"+cols.length;
+        form.onsubmit = "applySchema();"
+        
+    
+        var nameInput = document.createElement("input");
+        nameInput.setAttribute("id" , "colName"+cols.length) ;
+        nameInput.type="text";
+        
+    
+        var nameLabel = document.createElement("label");
+        nameLabel.setAttribute("for",nameInput);
+        nameLabel.innerHTML = "Name :"
+    
+        form.appendChild(nameLabel);
+        form.appendChild(nameInput);
+        
+    
+        form.appendChild(document.createElement('br')) 
+    
+        var selectDt = document.createElement('select');
+        selectDt.setAttribute("id",  "colDatatype"+cols.length);
+        selectDt.name = "typeselect";
+        //selectDt.onclick = "populateTypes();"
+        for(var i=0;i<options.length;i++){
+            var optElement = document.createElement("option");
+            optElement.text = options[i];
+            optElement.value = options[i];
+            selectDt.options.add(optElement);
+            //selectDt.appendChild(optElement)
+        }
+    
+        var dtLabel = document.createElement('label');
+        dtLabel.setAttribute("for",selectDt);
+        dtLabel.innerHTML = "Datatype :"
+    
+        form.appendChild(dtLabel);
+        form.appendChild(selectDt);
+    
+        form.appendChild(document.createElement('br'));
+    
+        var nullCheck = document.createElement('input');
+        nullCheck.type = "checkbox";
+        nullCheck.setAttribute("id", "isnotnull"+cols.length);
+    
+        var nullLabel = document.createElement('label');
+        nullLabel.setAttribute("for",nullCheck);
+        nullLabel.innerHTML = "NOT NULL";
+    
+        form.appendChild(nullCheck);
+        form.appendChild(nullLabel);
+    
+        form.appendChild(document.createElement('br'));
+    
+        var primaryKeyCheck = document.createElement('input');
+        primaryKeyCheck.type = "checkbox";
+        primaryKeyCheck.setAttribute("id", "ispk"+cols.length);
+    
+        var primaryKeyLabel = document.createElement('label');
+        primaryKeyLabel.setAttribute('for',primaryKeyCheck);
+        primaryKeyLabel.innerHTML = "IS PRIMARY KEY";
+    
+    
+        form.appendChild(primaryKeyCheck);
+        form.appendChild(primaryKeyLabel);
+        form.appendChild(document.createElement('br'))
+    
+    
+        // Other constraints : CHECK, FOREIGN KEY, UNIQUE
+        var uniqueConstraintCheck = document.createElement('input');
+        uniqueConstraintCheck.type = "checkbox";
+        uniqueConstraintCheck.setAttribute("id","isunique"+cols.length);
+    
+        var uniqueLabel = document.createElement('label'); 
+        uniqueLabel.setAttribute('for', uniqueConstraintCheck);
+        uniqueLabel.innerHTML = "IS UNIQUE";
+    
+        form.appendChild(uniqueConstraintCheck);
+        form.appendChild(uniqueLabel);
+        form.appendChild(document.createElement('br'));
+    
+        var checkConstraintDiv = document.createElement('div');
+        checkConstraintDiv.className = "flex-container";
+    
+        var checkConstraintBtnDiv = document.createElement('div');
+        checkConstraintBtnDiv.className = "flex-child";
+
+        var checkConstraintBtn = document.createElement('input');
+        checkConstraintBtn.type = "button";
+        checkConstraintBtn.setAttribute("id", "constraintbtn"+cols.length);
+        checkConstraintBtn.value = "Add CHECK constraint";
+
+        var checkInputDiv = document.createElement('div');
+        checkInputDiv.className = "flex-child";
+        checkInputDiv.style = "display:none";
+
+        var checkTable = document.createElement('table');
+        checkTable.setAttribute('id', 'checkTable'+cols.length);
+        checkTable.style = "display:none";
+
+        var checkTableDiv = document.createElement('div');
+        checkTableDiv.setAttribute('id', 'checkTableDiv'+cols.length);
+        checkTableDiv.appendChild(checkTable);
+
+
+        var inputConstraint = document.createElement('input');
+        inputConstraint.type = "text";
+        inputConstraint.setAttribute("id", "checkInput"+cols.length);
+
+        var saveConstraint = document.createElement('input');
+        saveConstraint.type = "button";
+        saveConstraint.value = "Save Constraint";
+        saveConstraint.onclick = function () {
+
+
+            if(checkConstraints.hasOwnProperty(nameInput.value)){
+                checkConstraints[nameInput.value].push(inputConstraint.value);
+            }
+            else{
+                checkConstraints[nameInput.value] = [inputConstraint.value];
+            }
+            checkInputDiv.style = "display:none";
+            
+            checkTable.style = "display:block";
+            var row = checkTable.insertRow(checkTable.rows.length);
+            row.setAttribute("id", checkTable.id+checkTable.rows.length);
+
+
+            var checkInput = row.insertCell(0);
+            checkInput.innerHTML = inputConstraint.value;
+    
+            
+            var deleteCheck = row.insertCell(1);
+            var delBtn = document.createElement('input');
+            delBtn.setAttribute('type', 'button');
+            delBtn.setAttribute('value', 'Delete');
+            delBtn.setAttribute('id', 'delCheck'+cols.length+checkConstraints[nameInput.value].length);
+            delBtn.onclick = function() {
+                document.getElementById(checkTable.id+checkTable.rows.length).remove();
+                checkTable.style = "display:none";
+    
+                var idx = checkConstraints[nameInput.value].indexOf(inputConstraint.value);
+                checkConstraints[nameInput.value].splice(idx,1);
+            }
+            deleteCheck.appendChild(delBtn);
+
+            if(checkConstraints[nameInput.value].length == 0){
+                checkTableDiv.style = "diaplay:none";
+            }
+            
+            
+            inputConstraint.value="";
+        };
+
+        checkConstraintBtn.onclick = function() {
+            console.log('Display check input!!');
+            checkInputDiv.style = "display:block";
+        }
+
+        checkConstraintBtnDiv.appendChild(checkConstraintBtn);
+        checkInputDiv.appendChild(inputConstraint); checkInputDiv.appendChild(saveConstraint);
+
+        checkConstraintDiv.appendChild(checkConstraintBtnDiv);
+        checkConstraintDiv.appendChild(checkInputDiv);
+
+        
+    
+        form.appendChild(checkConstraintDiv);
+        form.appendChild(document.createElement('br'));
+        form.appendChild(checkTableDiv);
+        
+        var foreignKeyDiv = document.createElement('div');
+        foreignKeyDiv.className = "flex-container";
+    
+        var fkButton = document.createElement('input');
+        fkButton.type = "button";
+        fkButton.setAttribute("id", "fkbutton"+cols.length);
+        fkButton.value = "Add Foreign Key Constraint";
+    
+    
+        var fkButtonDiv = document.createElement('div');
+        fkButtonDiv.className = "flex-child";
+    
+        var fkInputDiv = document.createElement('div');
+        fkInputDiv.className = "flex-child";
+        fkInputDiv.style = "display:none";
+    
+        var referencedTableSelect = document.createElement('select');
+        referencedTableSelect.setAttribute("id",  "referencedtable"+cols.length);
+        referencedTableSelect.name = "referencedtable";
+    
+        fkButton.addEventListener('click', () => addReferentialConstraint(fkInputDiv, nameInput.value));
+        
+        // Show foreign key constraint added for column in a table
+        var fkTable  = document.createElement('table');
+        fkTable.setAttribute("id", "fkTable"+cols.length);
+    
+        var dummyOpt = document.createElement("option");
+        dummyOpt.text = "Choose reference table";
+        dummyOpt.value = "";
+        referencedTableSelect.options.add(dummyOpt);
+    
+        console.log('Existing Tables :')
+    
+    
+        var tableLabel = document.createElement('label');
+        tableLabel.setAttribute("for",referencedTableSelect);
+        tableLabel.innerHTML = "Referenced Table :"
+    
+        var referencedColumnSelect = document.createElement('select');
+        referencedColumnSelect.setAttribute("id", "referencedcolumn"+cols.length);
+        referencedColumnSelect.name = "referencedcolumn";
+        
+    
+        referencedTableSelect.addEventListener("change", () => fillColumnOptions(referencedTableSelect.value, referencedColumnSelect))
+            
+        var saveForeignKey = document.createElement('input');
+        saveForeignKey.type = "button";
+        saveForeignKey.value = "Save Foreign Key Constraint";
+        saveForeignKey.id = "savefk";
+    
+        var columnLabel = document.createElement('label');
+        columnLabel.setAttribute("for",referencedColumnSelect);
+        columnLabel.innerHTML = "Referenced Column :";
+    
+    
+        var fkTableDiv = document.createElement('div');
+        fkTableDiv.setAttribute("id", "fkTableDiv"+cols.length);
+        fkTableDiv.appendChild(fkTable);
+        fkTableDiv.style = "display:none";
+    
+        fkInputDiv.appendChild(tableLabel); fkInputDiv.appendChild(referencedTableSelect);
+        fkInputDiv.appendChild(columnLabel); fkInputDiv.appendChild(referencedColumnSelect);
+        fkInputDiv.appendChild(saveForeignKey);
+    
+        saveForeignKey.onclick = function () {
+            fkTableDiv.style = "display:block";
+            fkInputDiv.style = "display:none";
+            foreignKeys[nameInput.value] = {'table':referencedTableSelect.value, 'column':referencedColumnSelect.value};
+            console.log('Saved foreign key REFERENCING ', foreignKeys[nameInput.value]['table'], '(',foreignKeys[nameInput.value]['column'],')');
+    
+            var row = fkTable.insertRow(fkTable.rows.length);
+            row.setAttribute("id", fkTable.id+fkTable.rows.length);
+            var table = row.insertCell(0);
+            table.innerHTML = referencedTableSelect.value;
+    
+            var column = row.insertCell(1);
+            column.innerHTML = referencedColumnSelect.value;
+    
+            var deleteFk = row.insertCell(2);
+            var delBtn = document.createElement('input');
+            delBtn.setAttribute('type', 'button');
+            delBtn.setAttribute('value', 'Delete');
+            delBtn.setAttribute('id', 'delFK'+cols.length);
+            delBtn.onclick = function() {
+                document.getElementById(fkTable.id+fkTable.rows.length).remove();
+                fkTable.style = "display:none";
+    
+                var idx = referencingColumns.indexOf(colName.value);
+                referencingColumns.splice(idx,1);
+                referencedTables.splice(idx,1);
+                referencedColumns.splice(idx,1);
+            }
+            deleteFk.appendChild(delBtn);
+        };
+    
+        
+        
+    
+        fkButtonDiv.appendChild(fkButton);
+        foreignKeyDiv.appendChild(fkButtonDiv);
+        foreignKeyDiv.appendChild(fkInputDiv);
+        form.appendChild(fkTableDiv);
+    
+    
+        form.appendChild(foreignKeyDiv);
+    
+        var saveBtn = document.createElement("input");
+        saveBtn.setAttribute("id", "savebtn");
+        saveBtn.type="button";
+        saveBtn.value = "Save";
+
+        form.appendChild(saveBtn);
+        colDivEl.appendChild(form);
+
+        saveBtn.onclick = function() {
+            console.log('Saving column : ', nameInput.value);
+
+            let columnJSON = {};
+            
+            
+            var colsTable = document.getElementById('columnsTable');
+            var row = colsTable.insertRow(colsTable.rows.length);
+    
+            
+            columnJSON['Name'] = nameInput.value ;
+            var name = row.insertCell(0);
+            name.innerHTML = columnJSON['Name'];
+    
+
+            var selectedOption = selectDt.options[selectDt.selectedIndex]
+            const selectedText = selectedOption.text;
+            columnJSON['Datatype'] = selectedText;
+            var datatype = row.insertCell(1);
+            datatype.innerHTML = columnJSON['Datatype'];
+
+
+            if (nullCheck.checked) {
+                columnJSON['Not Null'] = true;
+            }
+            else {
+                columnJSON['Not Null'] = false;
+            }
+            var isNotNullCheck = row.insertCell(2);
+            isNotNullCheck.innerHTML = columnJSON['Not Null'];
+    
+
+            if(primaryKeyCheck.checked) {
+                columnJSON['Primary Key'] = true;
+            }
+            else {
+                columnJSON['Primary Key'] = false;
+            }
+            var isPrimaryKeyCheck = row.insertCell(3);
+            isPrimaryKeyCheck.innerHTML = columnJSON['Primary Key'];
+    
+
+            if(uniqueConstraintCheck.checked) {
+                columnJSON['Unique'] = true;
+            }
+            else{
+                columnJSON['Unique'] = false;
+            }
+            var isUniqueCheck = row.insertCell(4);
+            isUniqueCheck.innerHTML = columnJSON['Unique'];
+
+
+            var checkConstraint = row.insertCell(5);
+            if(checkConstraints.hasOwnProperty(columnJSON['Name'])){
+                checkConstraints[columnJSON['Name']].forEach(constraint => {
+                    checkConstraint.innerHTML += constraint +'<br>'
+                    
+                });
+
+                columnJSON['Check Constraint'] = checkConstraint.value;
+            }
+
+            var fkConstraint = row.insertCell(6);
+            if(foreignKeys.hasOwnProperty(columnJSON['Name'])){
+                columnJSON['Foreign Key Constraint'] = {};
+                var rftable = foreignKeys[columnJSON['Name']]['table']; var rfcolumn = foreignKeys[columnJSON['Name']]['column'];
+                fkConstraint.innerHTML = 'REFERENCES COLUMN '+rfcolumn+' OF TABLE '+rftable;
+                columnJSON['Foreign Key Constraint']['table'] = rftable; 
+                columnJSON['Foreign Key Constraint']['column'] = rfcolumn;
+            }
+
+
+            
+            console.log('Current Col name :',columnJSON['Name']);
+            console.log('Current Col datatype : ',columnJSON['Datatype']);
+            cols.push(columnJSON);
+            console.log('Current col from  cols= ',cols[cols.length-1]);
+            /*console.log("Columns till now : ");
+            for(var json in cols) {
+                console.log(json);
+                console.log("----");
+            }*/
+            
+            colsTable.style  = "display:block";
+    
+            form.style="display:none";
+        };
+        
+        //console.log('Column input in applyForm() outside saveBtn event listener = ',document.getElementById('colName'+cols.length));
+    }
+    
+    
+    
+    
+    function applyChanges() {
+           
+    
+        }
+    
+        function apply(){
+            var table = (document.getElementById('tablename')).value;
+            createCmd = createCmd.concat(table+" (");
+            for(let i=1;i<cols.length;i++){
+                json = cols[i];
+                console.log('Column JSON to add = ',json);
+                // name (if primary key) datatype not null
+                var name = json['Name'];
+                var dtype = json['Datatype'];
+                var isPK = json['Primary Key'];
+                var notNull = json['Not Null'];
+    
+                let row = name+' ';
+    
+                row = row.concat(dtype);
+    
+                if(isPK == true)
+                {
+                    row = row.concat(' PRIMARY KEY');
+                }
+    
+                if(notNull==true && isPK==false){
+                    row = row.concat(' NOT NULL');
+                }
+    
+                if(json.hasOwnProperty('Foreign Key Constraint')){
+                    //var idx = referencingColumns.indexOf(name);
+                    row  = row.concat(' REFERENCES '+json['Foreign Key Constraint']['table']+' ('+json['Foreign Key Constraint']['column']+')');
+                }
+
+                
+                if(i > 1){
+                    createCmd = createCmd.concat(',')
+                }
+                createCmd = createCmd.concat(row);
+            }
+    
+            var checks = '';
+            if(json.hasOwnProperty('Check Constraint')){
+                checks = checks.concat(',CHECK ('+json['Check Constraint']+')');
+            }
+            
+            createCmd = createCmd.concat(checks);
+    
+            createCmd = createCmd.concat(')');
+    
+            console.log(createCmd);
+    
+            // Use fetch api to make a Flask rest call to create the schema
+            fetch('/add_schema', {
+                header : {'Content-Type':'application/json'},
+                method : 'POST',
+                body: JSON.stringify({
+                    'table':table,
+                    'create_command':createCmd
+                })
+            })
+            .then(function (response) {
+                if(response.ok){
+                    response.json()
+                    .then(function(response) {
+                        alert(response['response'])
+                        window.location.href = '/'
+                    });
+                }
+                else {
+                    console.log(response.statusText)
+                    throw Error('Something went wrong');
+                }
+            })
+        }
+    
+</script>
+{% endblock %}

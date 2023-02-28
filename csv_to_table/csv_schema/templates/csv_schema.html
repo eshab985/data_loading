@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block body %}
+    <table>
+        <tr>
+            <th>Field Name</th>
+            <th>Field Datatype</th>
+        </tr>
+        {% for field in schema %}
+            <tr>
+                <td>{{field.name}}</td>
+                <td>{{field.type}}</td>
+            </tr>
+        {% endfor %}
+    </table>
+    
+{% endblock %}

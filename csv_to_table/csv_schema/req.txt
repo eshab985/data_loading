@@ -1,0 +1,13 @@
+1)Flask rest controllers for fetching postgresql database
+
+@app.route('/getschema')
+def genschema(dbsource,user,pass) -> connect to the data source and query to get schema from the
+specified database. Render a template(schema_view.html). Pass dictionary containing  keys
+'table_names' and 'tables_columns_fields'(zip(tables_field_names[i],tables_fields_types[i]))
+
+
+
+2)Flask rest controllers for viewing schema of a selected csv file selected from a list of files in
+a file system 
+
+@app.route 

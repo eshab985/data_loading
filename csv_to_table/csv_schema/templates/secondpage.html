@@ -1,0 +1,182 @@
+{% extends 'base.html' %}
+{% block head %}
+    <script>
+        mappings = {}
+        var table = '{{table}}'
+        var csv = '{{csv}}'
+        var table_columns = {{table_cols|tojson}}
+        var pk = '{{primary_key}}'
+        var col_processed = 0;
+        $(function() {
+            $('#submitbtn').bind('click', function(){
+                var csv = $('#chosenCSV').children("option:selected");
+            });
+        });
+
+        function addMapping(csv_col, table_col_name){
+            console.log('Mapping added')
+            
+            
+            console.log('Table column : ',table_col_name)
+            console.log('CSV column: ',csv_col)
+            //console.log('Mapping to : ',table_columns[col_processed])
+            mappings[table_col_name]=csv_col;
+            //col_processed = col_processed + 1
+        }
+        function validate_mappings(){
+            console.log('Submit Button clicked')
+            //mappingObj = JSON.parse(mappings)
+            console.log(mappings)
+            console.log(typeof mappings)
+            mapped_csv_columns=[]
+            for (var key in mappings) {
+                    var val = mappings[key];
+                    if(mapped_csv_columns.indexOf(val) !== -1){
+                        alert('Duplicate mapping found')
+                        return false;
+
+                        //alert('Mapping is conflicting. Please provide one-one mappings!')
+                        //return false;
+                    }
+                    console.log(val,' is mapped');
+                    mapped_csv_columns.push(val)
+            }
+
+            //Save mapping to a file
+            fetch('/save_mapping', {
+                header: {
+                    'Content-Type':'application/json'
+                },
+                method: 'POST',
+                body: JSON.stringify({
+                    'csv': csv,
+                    'table':table,
+                    'mappings':mappings,
+                    'primary-key':pk
+                })
+            })
+            .then(function (response) {
+                if(response.ok){
+                    response.json()
+                    .then(function(response) {
+                        console.log(response)
+                        alert('Mapping saved')
+                        window.location.href = '/'
+                    });
+                }
+                else {
+                    console.log(response.statusText)
+                    throw Error('Something went wrong');
+                }
+            })
+            .then((data) => console.log(data))
+            .catch(function(error) {
+                console.log(error)
+            });
+        
+        }
+
+        var added_udfs = []
+        function addUDF() {
+            var udf_text = document.getElementById('udf');
+            udf_text.style = ('display: block');
+            var savebtn = document.getElementById('saveudfbtn');
+            savebtn.style = ('display:block');
+            
+        }
+
+        function saveUDF() {
+            var udf_text = document.getElementById('udf');
+            // udf_text.value
+            added_udfs.push(udf_text.value);
+            var savebtn = document.getElementById('saveudfbtn');
+
+            udf_text.style = ('display: none');
+            savebtn.style = ('display: none');
+
+
+            let updateBtn = document.createElement('button')
+            updateBtn.innerHTML = 'Update'
+            updateBtn.id = 'update'+added_udfs.length
+            updateBtn.onclick = function() {
+
+            };
+
+            let deleteBtn = document.createElement('button')
+            deleteBtn.innerHTML = 'Delete'
+            deleteBtn.onclick = function() {};
+
+            let udf_name = document.createElement('p')
+            console.log('UDF function is : ',udf_text.value)
+            console.log('Location of new line = ',(udf_text.value).search('/\n/'))
+            var udf_view = document.getElementById('viewudf');
+
+            udf_view.appendChild(updateBtn);
+            udf_view.appendChild(deleteBtn);
+            udf_view.appendChild(udf_name);
+            var heading = document.getElementById('udfheading');
+            heading.style = ('display: block');
+        }
+    </script>
+{% endblock %}
+{% block body %}
+<div class="title">
+    <p>{{table}}</p>
+</div>
+<div class="secondpagestyle"> 
+    <div class="flex-container">
+        <div class="flex-child">
+            <table>
+                <tr>
+                    <th>Column Name</th>
+                    <th>Data Type</th>
+                    <th>Mapping to {{csv}}</th>
+                </tr>
+               
+                {% for i in range(0, table_cols|length) %}
+                    <div id="{{i}}" style="display: none">{{i}}</div>
+                    <tr>
+                        
+                        {% if table_cols[i] == primary_key %}
+                            <td>{{table_cols[i]}}(PK)</td>
+                        {% else %}
+                            <td>{{table_cols[i]}}</td>
+                        {% endif %}
+                        <td>{{cols_types[i]}}</td>
+                        <td>
+                            <select id="mapping" name="mapping" onchange='addMapping(this.value, "{{table_cols[i]}}");'>
+                                <option value="">Select a CSV field</option>
+                                {% for field in csv_schema %}
+                                    <option value="{{field.name}}">Column: {{field.name}} DataType: {{field.type}}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                    </tr>
+                {% endfor %}  
+                
+            </table>
+        </div>
+    </div>
+    <div class="udfbtn">
+        <div class="flex-container">
+            <div id="addudf" class="flex-child">
+                <input id="addudfbtn" name="addudfbtn" type="button" onclick="addUDF();" value="Add UDF"/>
+                <textarea id="udf" style="display: none" rows="5" cols="40"></textarea>
+                <input id="saveudfbtn" name="saveudfbtn" type="button" style="display: none" onclick="saveUDF();" value="Save UDF"/>
+            </div>
+            <div id="viewudf" class="flex-child" style="margin-left:30px;">
+                <p id="udfheading" style="display:none">Added UDFs</p>
+                <!-- Added udfs will be shown here with options for updating 
+                and deleting udf-->
+            </div>
+        </div>
+        
+    
+    </div>
+    <div class ="mapbtn">
+        <input id="submitbtn" name="submitbtn" type="submit" onclick="validate_mappings();" value="Apply mapping"/>
+    </div>
+
+    
+</div>
+{% endblock %}
